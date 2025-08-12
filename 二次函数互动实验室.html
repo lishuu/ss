@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二次函数互动实验室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Calm Neutrals (Beige, Charcoal, Soft Blue) -->
+    <!-- Application Structure Plan: The application is designed as an interactive lab. The main section allows users to manipulate parameters 'a', 'b', and 'c' with sliders and see the parabola's graph and key properties update in real-time. This "discovery-first" approach fosters intuitive understanding. It's supported by secondary sections for 'Core Concepts' (quick reference) and 'Real-world Applications' (context), accessible via a top navigation bar. This structure prioritizes active learning over passive reading, which is most effective for grasping mathematical concepts. -->
+    <!-- Visualization & Content Choices: Report Info -> Goal -> Viz/Presentation Method -> Interaction -> Justification -> Library/Method. 1. Parameters (a, b, c) -> Understand their effect -> Dynamic Line Chart -> Sliders for a, b, c update chart and info text -> Direct, hands-on manipulation makes abstract concepts concrete -> Chart.js. 2. Key Definitions -> Quick reference -> Styled HTML cards -> Static display -> Provides easy access to foundational knowledge -> Tailwind CSS. 3. Real-world Examples -> Show relevance -> Horizontal scrolling gallery of cards -> Click to see description -> Connects math to tangible applications, increasing engagement -> Tailwind CSS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #fdfaf6;
+            color: #333;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link:hover {
+            color: #3b82f6;
+        }
+        .active-link {
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
+        }
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .control-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .app-card {
+            flex: 0 0 80%;
+            scroll-snap-align: center;
+        }
+        @media (min-width: 640px) {
+            .app-card {
+                flex: 0 0 45%;
+            }
+        }
+        @media (min-width: 1024px) {
+            .app-card {
+                flex: 0 0 30%;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold text-blue-600">二次函数互动实验室</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#lab" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700">互动探索</a>
+                        <a href="#concepts" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700">核心概念</a>
+                        <a href="#applications" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-gray-700">生活应用</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Interactive Lab Section -->
+        <section id="lab" class="py-12 md:py-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">探索二次函数的奥秘</h1>
+                    <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-500">
+                        欢迎来到互动实验室！这里是让你亲手“玩”转二次函数的地方。尝试拖动下方的滑块，改变 a, b, c 的值，看看抛物线会发生什么奇妙的变化吧！
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-center">
+                    <!-- Chart -->
+                    <div class="lg:col-span-3 bg-white p-4 sm:p-6 rounded-2xl shadow-lg">
+                        <div class="chart-container">
+                            <canvas id="parabolaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Controls and Info -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-lg font-bold mb-4">参数控制器</h3>
+                            <!-- a slider -->
+                            <div class="space-y-2">
+                                <div class="flex justify-between font-medium">
+                                    <label for="a-slider">参数 a</label>
+                                    <span id="a-value" class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md text-sm">1.0</span>
+                                </div>
+                                <input id="a-slider" type="range" min="-5" max="5" value="1" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer control-slider">
+                            </div>
+                             <!-- b slider -->
+                            <div class="space-y-2 mt-4">
+                                <div class="flex justify-between font-medium">
+                                    <label for="b-slider">参数 b</label>
+                                    <span id="b-value" class="px-2 py-0.5 bg-green-100 text-green-800 rounded-md text-sm">0.0</span>
+                                </div>
+                                <input id="b-slider" type="range" min="-10" max="10" value="0" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer control-slider">
+                            </div>
+                             <!-- c slider -->
+                            <div class="space-y-2 mt-4">
+                                <div class="flex justify-between font-medium">
+                                    <label for="c-slider">参数 c</label>
+                                    <span id="c-value" class="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md text-sm">0.0</span>
+                                </div>
+                                <input id="c-slider" type="range" min="-10" max="10" value="0" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer control-slider">
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-2xl shadow-lg">
+                             <h3 class="text-lg font-bold mb-4">动态信息板</h3>
+                             <div id="info-panel" class="space-y-3 text-gray-700">
+                                <p class="font-mono text-center text-lg p-2 bg-gray-100 rounded-md">y = 1.00x² + 0.00x + 0.00</p>
+                                <p><strong>对称轴:</strong> <span id="axis-info">x = 0.00</span></p>
+                                <p><strong>顶点坐标:</strong> <span id="vertex-info">(0.00, 0.00)</span></p>
+                                <p><strong>与y轴交点:</strong> <span id="y-intercept-info">(0, 0.00)</span></p>
+                                <div id="teacher-comment" class="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-400 text-yellow-800 rounded-r-lg">
+                                    <p class="font-semibold">老师说：</p>
+                                    <p>当 a > 0 时，抛物线开口向上，像一张笑脸😊。</p>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core Concepts Section -->
+        <section id="concepts" class="py-12 md:py-20 bg-blue-50/50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">核心概念回顾</h2>
+                    <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-500">
+                        这里是你学习二次函数的重要知识点“加油站”，帮你巩固基础。
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+                        <h3 class="text-xl font-bold mb-2">二次函数</h3>
+                        <p class="text-gray-600">一般形式为 <span class="font-mono bg-gray-100 px-1 rounded">y = ax² + bx + c</span>，其中 <span class="font-bold text-red-600">a ≠ 0</span>。它的图像是一条被称为“抛物线”的优美曲线。</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+                        <h3 class="text-xl font-bold mb-2">抛物线的顶点</h3>
+                        <p class="text-gray-600">抛物线的最高点或最低点。它是函数图像的转折点，也是对称轴与抛物线的交点。顶点决定了函数的最大值或最小值。</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+                        <h3 class="text-xl font-bold mb-2">对称轴</h3>
+                        <p class="text-gray-600">一条垂直于x轴的直线，它将抛物线分成完全相同的两半。其方程为 <span class="font-mono bg-gray-100 px-1 rounded">x = -b / 2a</span>。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Real-world Applications Section -->
+        <section id="applications" class="py-12 md:py-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">生活中的二次函数</h2>
+                    <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-500">
+                        数学并不遥远，二次函数就隐藏在我们生活的角角落落。
+                    </p>
+                </div>
+                <div class="flex overflow-x-auto space-x-6 pb-4" style="scroll-snap-type: x mandatory;">
+                    <div class="app-card bg-white rounded-2xl shadow-lg overflow-hidden p-6">
+                        <h3 class="text-xl font-bold mb-2">体育运动 🏀</h3>
+                        <p class="text-gray-600">无论是投出的篮球，还是踢出的足球，它们在空中划出的优美弧线都是抛物线。通过计算，运动员可以找到最佳的出手角度和力度。</p>
+                    </div>
+                    <div class="app-card bg-white rounded-2xl shadow-lg overflow-hidden p-6">
+                        <h3 class="text-xl font-bold mb-2">建筑设计 🌉</h3>
+                        <p class="text-gray-600">许多宏伟的拱桥都采用了抛物线拱形结构。这种设计不仅美观，而且能将桥梁的重量均匀分散，使其异常坚固和稳定。</p>
+                    </div>
+                    <div class="app-card bg-white rounded-2xl shadow-lg overflow-hidden p-6">
+                        <h3 class="text-xl font-bold mb-2">科技应用 📡</h3>
+                        <p class="text-gray-600">卫星电视的“大锅盖”（天线）的反射面就是由抛物线旋转而成的。它能将接收到的微弱信号全部反射并聚焦到一点上，从而获得清晰的信号。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center text-sm">
+            <p>&copy; 2025 二次函数互动实验室. 为探索数学之美而生。</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('parabolaChart').getContext('2d');
+
+            const aSlider = document.getElementById('a-slider');
+            const bSlider = document.getElementById('b-slider');
+            const cSlider = document.getElementById('c-slider');
+            
+            const aValueSpan = document.getElementById('a-value');
+            const bValueSpan = document.getElementById('b-value');
+            const cValueSpan = document.getElementById('c-value');
+
+            const equationEl = document.querySelector('#info-panel .font-mono');
+            const axisEl = document.getElementById('axis-info');
+            const vertexEl = document.getElementById('vertex-info');
+            const yInterceptEl = document.getElementById('y-intercept-info');
+            const commentEl = document.getElementById('teacher-comment');
+
+            let chartData = {
+                labels: [],
+                datasets: [{
+                    label: 'y = ax² + bx + c',
+                    data: [],
+                    borderColor: '#3b82f6',
+                    borderWidth: 3,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    fill: false
+                }, {
+                    label: '对称轴',
+                    data: [],
+                    borderColor: '#ef4444',
+                    borderWidth: 1.5,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }]
+            };
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        min: -10,
+                        max: 10,
+                        grid: {
+                            color: '#e5e7eb'
+                        }
+                    },
+                    y: {
+                        min: -10,
+                        max: 10,
+                        grid: {
+                            color: '#e5e7eb'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            };
+
+            let parabolaChart = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: chartOptions
+            });
+
+            function generateParabolaData(a, b, c) {
+                const data = [];
+                for (let x = -15; x <= 15; x += 0.2) {
+                    data.push({x: x, y: a * x * x + b * x + c});
+                }
+                return data;
+            }
+
+            function updateApp() {
+                const a = parseFloat(aSlider.value);
+                const b = parseFloat(bSlider.value);
+                const c = parseFloat(cSlider.value);
+
+                aValueSpan.textContent = a.toFixed(1);
+                bValueSpan.textContent = b.toFixed(1);
+                cValueSpan.textContent = c.toFixed(1);
+
+                // Update chart
+                parabolaChart.data.datasets[0].data = generateParabolaData(a, b, c);
+                
+                // Update info
+                const axisX = (a === 0) ? 0 : -b / (2 * a);
+                const vertexY = (a === 0) ? c : a * axisX * axisX + b * axisX + c;
+
+                equationEl.textContent = `y = ${a.toFixed(2)}x² + ${b.toFixed(2)}x + ${c.toFixed(2)}`;
+                axisEl.textContent = `x = ${axisX.toFixed(2)}`;
+                vertexEl.textContent = `(${axisX.toFixed(2)}, ${vertexY.toFixed(2)})`;
+                yInterceptEl.textContent = `(0, ${c.toFixed(2)})`;
+
+                // Update axis line on chart
+                parabolaChart.data.datasets[1].data = [
+                    {x: axisX, y: -1000},
+                    {x: axisX, y: 1000}
+                ];
+
+                // Adjust Y-axis scale dynamically
+                const yValues = parabolaChart.data.datasets[0].data.map(p => p.y);
+                const yMin = Math.min(...yValues, vertexY, c);
+                const yMax = Math.max(...yValues, vertexY, c);
+                const yRange = yMax - yMin;
+                parabolaChart.options.scales.y.min = Math.floor(yMin - yRange * 0.2);
+                parabolaChart.options.scales.y.max = Math.ceil(yMax + yRange * 0.2);
+
+                parabolaChart.update();
+                
+                // Update teacher's comment
+                updateTeacherComment(a, b, c);
+            }
+            
+            function updateTeacherComment(a, b, c) {
+                let commentHTML = `<p class="font-semibold">老师说：</p>`;
+                if (a === 0) {
+                    commentHTML += `<p>注意！当 a = 0 时，它就不是二次函数了，变成了一条直线！</p>`;
+                } else if (a > 0) {
+                    commentHTML += `<p>当 a > 0 时，抛物线开口向上，像一张笑脸😊。它有一个最低点。</p>`;
+                } else {
+                    commentHTML += `<p>当 a < 0 时，抛物线开口向下，像一座小山☹️。它有一个最高点。</p>`;
+                }
+                
+                if (Math.abs(a) > 2) {
+                    commentHTML += `<p>|a| 的值变大了，你看，抛物线的开口是不是变“瘦”了？</p>`;
+                } else if (Math.abs(a) < 0.5 && a !== 0) {
+                     commentHTML += `<p>|a| 的值变小了，抛物线的开口也变“胖”了。</p>`;
+                }
+
+                commentHTML += `<p>参数 c 决定了图像和 y 轴的交点，现在交点是 (0, ${c.toFixed(2)})。</p>`;
+                commentEl.innerHTML = commentHTML;
+            }
+
+            [aSlider, bSlider, cSlider].forEach(slider => {
+                slider.addEventListener('input', updateApp);
+            });
+
+            // Smooth scroll for nav links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // Initial load
+            updateApp();
+        });
+    </script>
+</body>
+</html>
